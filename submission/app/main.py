@@ -199,7 +199,8 @@ async def security_and_logging_middleware(request: Request, call_next):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers.pop("server", None)  # Ẩn server info
+        if "server" in response.headers:
+            del response.headers["server"]  # Ẩn server info
         duration_ms = round((time.time() - start) * 1000, 1)
         logger.info(json.dumps({
             "event": "request",
