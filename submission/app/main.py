@@ -30,10 +30,12 @@ import redis as redis_lib
 from fastapi import FastAPI, HTTPException, Security, Depends, Request, Response
 from fastapi.security.api_key import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 import uvicorn
 
 from app.config import settings
+from app.chat import CHAT_HTML
 
 # Mock LLM — thay bằng OpenAI/Anthropic khi có key thật
 import sys
@@ -239,12 +241,69 @@ def root():
         "version": settings.app_version,
         "environment": settings.environment,
         "endpoints": {
+            "chat":    "GET  /chat  (giao diện web để test)",
             "ask":     "POST /ask  (requires X-API-Key)",
             "health":  "GET  /health",
             "ready":   "GET  /ready",
             "metrics": "GET  /metrics  (requires X-API-Key)",
         },
     }
+
+
+@app.get("/chat", response_class=HTMLResponse, tags=["Chat UI"])
+def chat_ui():
+    """Giao diện chatbot web — mở trên trình duyệt để test agent trực tiếp."""
+    return HTMLResponse(content=CHAT_HTML)
+
+
+@app.post("/chat/send", response_model=AskResponse, tags=["Chat UI"])
+async def chat_send(body: AskRequest, request: Request):
+    """
+    Endpoint cho giao diện chat web.
+
+    Không yêu cầu X-API-Key từ người dùng — UI gọi trực tiếp.
+    Vẫn áp dụng rate limit + cost guard như /ask.
+    """
+    # Rate limit theo IP client (vì không có API key)
+    client_ip = str(request.client.host) if request.client else "unknown"
+    check_rate_limit(f"chat:{client_ip}")
+
+    # Ước tính token & kiểm tra budget
+    input_tokens = len(body.question.split()) * 2
+    check_and_record_cost(input_tokens, 0)
+
+    # Lấy / tạo session
+    session_id = body.session_id or str(uuid.uuid4())
+    history = load_history(session_id)
+
+    logger.info(json.dumps({
+        "event": "chat_call",
+        "session_id": session_id,
+        "q_len": len(body.question),
+        "history_len": len(history),
+        "client": client_ip,
+    }))
+
+    # Gọi LLM
+    answer = llm_ask(body.question)
+
+    # Ghi lại cost output
+    output_tokens = len(answer.split()) * 2
+    check_and_record_cost(0, output_tokens)
+
+    # Lưu history
+    history.append({"role": "user",      "content": body.question})
+    history.append({"role": "assistant", "content": answer})
+    save_history(session_id, history)
+
+    return AskResponse(
+        question=body.question,
+        answer=answer,
+        model=settings.llm_model,
+        session_id=session_id,
+        timestamp=datetime.now(timezone.utc).isoformat(),
+        served_by=os.getenv("INSTANCE_ID", "local"),
+    )
 
 
 @app.post("/ask", response_model=AskResponse, tags=["Agent"])
