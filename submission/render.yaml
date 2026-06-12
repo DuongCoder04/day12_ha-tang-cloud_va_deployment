@@ -2,10 +2,12 @@ services:
   - type: web
     name: duongcoder04-ai-agent
     runtime: docker
+    dockerfilePath: ./submission/Dockerfile
+    dockerContext: ./submission
     region: singapore
     plan: starter
     healthCheckPath: /health
-    autoDeploy: true
+    autoDeploy: false
     envVars:
       - key: ENVIRONMENT
         value: production
