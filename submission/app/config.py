@@ -44,6 +44,11 @@ class Settings:
     # Storage
     redis_url: str = field(default_factory=lambda: os.getenv("REDIS_URL", ""))
 
+    # Chat UI auth
+    chat_password: str = field(
+        default_factory=lambda: os.getenv("CHAT_PASSWORD", "duong2024")
+    )
+
     def validate(self):
         logger = logging.getLogger(__name__)
         if self.environment == "production":

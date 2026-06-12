@@ -21,6 +21,8 @@ import signal
 import logging
 import json
 import uuid
+import hmac
+import hashlib
 from datetime import datetime, timezone
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
@@ -148,6 +150,40 @@ def verify_api_key(api_key: str = Security(api_key_header)) -> str:
     return api_key
 
 # ─────────────────────────────────────────────────────────
+# Auth — Chat UI token (HMAC-based, stateless)
+# ─────────────────────────────────────────────────────────
+_CHAT_TOKEN_TTL = 86400 * 7  # 7 ngày
+
+def _sign_chat_token(timestamp: int) -> str:
+    """Tạo HMAC-SHA256 signature từ timestamp + chat_password."""
+    msg = f"{timestamp}:{settings.chat_password}".encode()
+    return hmac.new(settings.jwt_secret.encode(), msg, hashlib.sha256).hexdigest()
+
+def _make_chat_token() -> str:
+    ts = int(time.time())
+    sig = _sign_chat_token(ts)
+    return f"{ts}.{sig}"
+
+def _verify_chat_token(token: str) -> bool:
+    """Trả về True nếu token hợp lệ và chưa hết hạn."""
+    try:
+        ts_str, sig = token.split(".", 1)
+        ts = int(ts_str)
+        if time.time() - ts > _CHAT_TOKEN_TTL:
+            return False
+        expected = _sign_chat_token(ts)
+        return hmac.compare_digest(sig, expected)
+    except Exception:
+        return False
+
+def verify_chat_token(request: Request) -> None:
+    """Dependency: kiểm tra X-Chat-Token header."""
+    token = request.headers.get("X-Chat-Token", "")
+    if not token or not _verify_chat_token(token):
+        raise HTTPException(status_code=401, detail="Invalid or expired chat token. Please login again.")
+
+
+# ─────────────────────────────────────────────────────────
 # Lifespan
 # ─────────────────────────────────────────────────────────
 @asynccontextmanager
@@ -263,6 +299,9 @@ class AskResponse(BaseModel):
     timestamp: str
     served_by: str
 
+class LoginRequest(BaseModel):
+    password: str = Field(..., min_length=1, max_length=100)
+
 # ─────────────────────────────────────────────────────────
 # Endpoints
 # ─────────────────────────────────────────────────────────
@@ -288,13 +327,26 @@ def chat_ui():
     return HTMLResponse(content=CHAT_HTML)
 
 
+@app.post("/chat/login", tags=["Chat UI"])
+def chat_login(body: LoginRequest):
+    """
+    Xác thực password để lấy chat token.
+
+    Trả về token hợp lệ 7 ngày — lưu vào localStorage phía client.
+    """
+    if not hmac.compare_digest(body.password, settings.chat_password):
+        raise HTTPException(status_code=401, detail="Sai password. Vui lòng thử lại.")
+    token = _make_chat_token()
+    return {"token": token, "expires_in": _CHAT_TOKEN_TTL}
+
+
 @app.post("/chat/send", response_model=AskResponse, tags=["Chat UI"])
-async def chat_send(body: AskRequest, request: Request):
+async def chat_send(body: AskRequest, request: Request, _: None = Depends(verify_chat_token)):
     """
     Endpoint cho giao diện chat web.
 
-    Không yêu cầu X-API-Key từ người dùng — UI gọi trực tiếp.
-    Vẫn áp dụng rate limit + cost guard như /ask.
+    Yêu cầu header **X-Chat-Token** (lấy từ `/chat/login`).
+    Vẫn áp dụng rate limit + cost guard.
     """
     # Rate limit theo IP client (vì không có API key)
     client_ip = str(request.client.host) if request.client else "unknown"
