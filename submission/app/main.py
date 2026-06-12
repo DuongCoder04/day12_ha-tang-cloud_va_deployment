@@ -316,8 +316,8 @@ async def chat_send(body: AskRequest, request: Request):
         "client": client_ip,
     }))
 
-    # Gọi LLM
-    answer = llm_ask(body.question)
+    # Gọi LLM — truyền history để nhớ context
+    answer = llm_ask(body.question, history=history)
 
     # Ghi lại cost output
     output_tokens = len(answer.split()) * 2
@@ -370,8 +370,8 @@ async def ask_agent(
         "client": str(request.client.host) if request.client else "unknown",
     }))
 
-    # Gọi LLM
-    answer = llm_ask(body.question)
+    # Gọi LLM — truyền history để nhớ context
+    answer = llm_ask(body.question, history=history)
 
     # Ghi lại cost output
     output_tokens = len(answer.split()) * 2
