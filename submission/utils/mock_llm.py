@@ -9,7 +9,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-OPENROUTER_MODEL   = os.getenv("OPENROUTER_MODEL", "anthropic/claude-haiku-4-5")
+OPENROUTER_MODEL   = os.getenv("OPENROUTER_MODEL", "google/gemma-4-31b-it:free")
 OPENROUTER_BASE    = "https://openrouter.ai/api/v1/chat/completions"
 
 SYSTEM_PROMPT = """Bạn là một AI assistant thông minh, thân thiện, được deploy trên cloud bởi DuongCoder04.
