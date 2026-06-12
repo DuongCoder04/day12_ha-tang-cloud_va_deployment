@@ -176,11 +176,43 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="Production AI Agent — Day 12 Lab (DuongCoder04)",
+    description="""
+## 🤖 DuongCoder04 AI Agent — Day 12 Lab
+
+Production-ready AI agent với đầy đủ các tính năng:
+
+| Feature | Status |
+|---|---|
+| 12-Factor Config | ✅ |
+| API Key Auth | ✅ |
+| Rate Limiting | ✅ 20 req/min |
+| Daily Budget Guard | ✅ $5/day |
+| Redis Session | ✅ with fallback |
+| Health & Readiness | ✅ |
+| Graceful Shutdown | ✅ |
+| Security Headers | ✅ |
+
+### 🚀 Quick Start
+
+1. Mở **[Chat UI](/chat)** để chat trực tiếp trên trình duyệt
+2. Dùng `/ask` với header `X-API-Key` để gọi API
+3. Xem metrics tại `/metrics` (cần auth)
+
+### 🔑 Authentication
+
+Các endpoint yêu cầu header:
+```
+X-API-Key: <your-api-key>
+```
+""",
     lifespan=lifespan,
-    # Tắt /docs trong production
-    docs_url="/docs" if settings.environment != "production" else None,
-    redoc_url=None,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    swagger_ui_parameters={
+        "defaultModelsExpandDepth": -1,  # ẩn schema section mặc định
+        "docExpansion": "list",           # mở rộng danh sách endpoint
+        "persistAuthorization": True,     # giữ API key sau khi reload
+    },
 )
 
 app.add_middleware(
