@@ -8,8 +8,9 @@
 |---|---|
 | **Tên app** | DuongCoder04 AI Agent |
 | **Version** | 1.0.0 |
-| **Stack** | FastAPI + Redis + Docker |
-| **Public URL** | _(cập nhật sau khi deploy)_ |
+| **Stack** | FastAPI + Redis + Docker + OpenRouter |
+| **Public URL** | https://day12-ha-tang-cloud-va-deployment-ozkn.onrender.com |
+| **Chat UI** | https://day12-ha-tang-cloud-va-deployment-ozkn.onrender.com/chat (password: `duong2024`) |
 
 ---
 
@@ -154,11 +155,15 @@ Phải đạt **100%** trước khi nộp bài.
 | Method | Path | Auth | Mô tả |
 |--------|------|------|-------|
 | GET | `/` | ❌ | App info |
-| POST | `/ask` | ✅ X-API-Key | Hỏi agent |
+| GET | `/chat` | ❌ | Giao diện chatbot web |
+| POST | `/chat/login` | ❌ | Xác thực password → token |
+| POST | `/chat/send` | ✅ X-Chat-Token | Gửi tin nhắn cho AI |
+| POST | `/ask` | ✅ X-API-Key | Hỏi agent (programmatic) |
 | GET | `/health` | ❌ | Liveness probe |
 | GET | `/ready` | ❌ | Readiness probe |
 | GET | `/metrics` | ✅ X-API-Key | Usage metrics |
-| GET | `/docs` | ❌ | Swagger UI (chỉ non-production) |
+| GET | `/docs` | ❌ | Swagger UI |
+| GET | `/redoc` | ❌ | ReDoc API docs |
 
 ---
 
