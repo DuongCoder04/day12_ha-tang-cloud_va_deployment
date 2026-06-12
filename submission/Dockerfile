@@ -29,11 +29,13 @@ COPY --from=builder /root/.local /home/agent/.local
 COPY app/ ./app/
 COPY utils/ ./utils/
 
-RUN chown -R agent:agent /app
+RUN chown -R agent:agent /app && \
+    chown -R agent:agent /home/agent/.local
 
 USER agent
 
 ENV PATH=/home/agent/.local/bin:$PATH
+ENV PYTHONPATH=/app
 ENV PYTHONPATH=/app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
